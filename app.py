@@ -56,12 +56,13 @@ def watcher_loop():
         try:
             r = requests.get(f"{AI_BRAIN_URL}/health", timeout=10)
             aibrain_ok = r.status_code == 200
-            if not aibrain_ok and (not last_alert_aibrain or datetime.now() - last_alert_aibrain > timedelta(minutes=30)):
-                send_ntfy("Atlas Alert", "AI Brain is unreachable. All monitoring blind.", "urgent")
-                last_alert_aibrain = datetime.now()
+            if not aibrain_ok:
+                if last_alert_aibrain is None or datetime.now() - last_alert_aibrain > timedelta(minutes=30):
+                    send_ntfy("Atlas Alert", "AI Brain is unreachable. All monitoring blind.", "urgent")
+                    last_alert_aibrain = datetime.now()
         except Exception as e:
             log(f"AI Brain check failed: {e}")
-            if not last_alert_aibrain or datetime.now() - last_alert_aibrain > timedelta(minutes=30)):
+            if last_alert_aibrain is None or datetime.now() - last_alert_aibrain > timedelta(minutes=30):
                 send_ntfy("Atlas Alert", f"AI Brain unreachable: {e}", "urgent")
                 last_alert_aibrain = datetime.now()
         if aibrain_ok:
@@ -69,7 +70,7 @@ def watcher_loop():
             hermes = check_agent("hermes")
             log(f"Hermes: alive={hermes.get('alive')}, downtime={hermes.get('downtime_seconds', 0):.0f}s")
             if not hermes.get("alive"):
-                if not last_alert_hermes or datetime.now() - last_alert_hermes > timedelta(minutes=30)):
+                if last_alert_hermes is None or datetime.now() - last_alert_hermes > timedelta(minutes=30):
                     downtime = hermes.get('downtime_seconds', 0)
                     msg = f"Hermes is down ({downtime/60:.0f}m). Tap to wake Termux."
                     send_ntfy("Atlas: Hermes Down", msg, "high")
@@ -79,7 +80,7 @@ def watcher_loop():
             openclaw = check_agent("openclaw")
             log(f"OpenClaw: alive={openclaw.get('alive')}, downtime={openclaw.get('downtime_seconds', 0):.0f}s")
             if not openclaw.get("alive"):
-                if not last_alert_openclaw or datetime.now() - last_alert_openclaw > timedelta(minutes=30)):
+                if last_alert_openclaw is None or datetime.now() - last_alert_openclaw > timedelta(minutes=30):
                     downtime = openclaw.get('downtime_seconds', 0)
                     msg = f"OpenClaw is down ({downtime/60:.0f}m). Tap to wake."
                     send_ntfy("Atlas: OpenClaw Down", msg, "high")
