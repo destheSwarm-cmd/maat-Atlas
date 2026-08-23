@@ -481,3 +481,32 @@ def get_card(agent):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "10000"))
     app.run(host="0.0.0.0", port=port)
+
+VERIFICATIONS = {}
+
+@app.route("/verify-task", methods=["POST"])
+def verify_task():
+    data = request.get_json(force=True)
+    agent = data.get("agent")
+    stage = data.get("stage")
+    task = data.get("task")
+
+    if stage == "start":
+        VERIFICATIONS[agent] = {"task": task, "report": None, "verdict": None}
+        return jsonify({"status": "snapshot recorded"})
+
+    if stage == "report":
+        report = data.get("report", "")
+        original_task = VERIFICATIONS.get(agent, {}).get("task", task)
+        prompt = f"Task given: {original_task}\nAgent's claimed report: {report}\nDid the agent actually complete the task as instructed? Return ONLY JSON: {{\"verdict\": \"pass\" or \"fail\", \"reason\": string}}"
+        result = deepseek_ask(prompt, 200)
+        try:
+            verdict = json.loads(result) if result else {"verdict": "unknown", "reason": "no judge response"}
+        except Exception:
+            verdict = {"verdict": "unknown", "reason": "unparseable judge response"}
+        if agent in VERIFICATIONS:
+            VERIFICATIONS[agent]["report"] = report
+            VERIFICATIONS[agent]["verdict"] = verdict
+        return jsonify(verdict)
+
+    return jsonify({"error": "unknown stage"}), 400
