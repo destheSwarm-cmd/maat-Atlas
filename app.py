@@ -14,7 +14,7 @@ AI_BRAIN_URL     = "https://synapse-ledger.lovable.app"
 AI_BRAIN_API_KEY = "abrn_agt0004_eddc5d433291f12e976726836d2c5a07636076d353acd221"
 NTFY_TOPIC       = "maat-atlas-wake"
 CHECK_INTERVAL   = 300
-DEEPSEEK_API_KEY = "a746fb0ce85e4e5688735f816af7766d"
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL   = "deepseek-chat"
 
 HEARTBEATS       = {}
