@@ -54,7 +54,9 @@ def deepseek_ask(prompt, max_tokens=150):
             timeout=15
         )
         if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"].strip()
+            msg = r.json()["choices"][0]["message"]
+            text = msg.get("content") or msg.get("reasoning") or ""
+            return text.strip()
     except Exception as e:
         log(f"DeepSeek error: {e}")
     return None
@@ -501,7 +503,7 @@ def verify_task():
         report = data.get("report", "")
         original_task = VERIFICATIONS.get(agent, {}).get("task", task)
         prompt = f"Task given: {original_task}\nAgent's claimed report: {report}\nDid the agent actually complete the task as instructed? Return ONLY JSON: {{\"verdict\": \"pass\" or \"fail\", \"reason\": string}}"
-        result = groq_ask(prompt, 200)
+        result = groq_ask(prompt, 400)
         try:
             verdict = json.loads(result) if result else {"verdict": "unknown", "reason": "no judge response"}
         except Exception:
@@ -524,7 +526,9 @@ def groq_ask(prompt, max_tokens=200):
             timeout=20
         )
         if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
+            msg = r.json()["choices"][0]["message"]
+            text = msg.get("content") or msg.get("reasoning") or ""
+            return text
         log(f"Groq judge failed: HTTP {r.status_code} {r.text}")
         return None
     except Exception as e:
