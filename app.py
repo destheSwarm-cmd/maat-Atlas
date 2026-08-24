@@ -15,6 +15,8 @@ AI_BRAIN_API_KEY = "abrn_agt0004_eddc5d433291f12e976726836d2c5a07636076d353acd22
 NTFY_TOPIC       = "maat-atlas-wake"
 CHECK_INTERVAL   = 300
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = "openai/gpt-oss-20b"
 DEEPSEEK_MODEL   = "deepseek-chat"
 
 HEARTBEATS       = {}
@@ -499,7 +501,7 @@ def verify_task():
         report = data.get("report", "")
         original_task = VERIFICATIONS.get(agent, {}).get("task", task)
         prompt = f"Task given: {original_task}\nAgent's claimed report: {report}\nDid the agent actually complete the task as instructed? Return ONLY JSON: {{\"verdict\": \"pass\" or \"fail\", \"reason\": string}}"
-        result = deepseek_ask(prompt, 200)
+        result = groq_ask(prompt, 200)
         try:
             verdict = json.loads(result) if result else {"verdict": "unknown", "reason": "no judge response"}
         except Exception:
@@ -510,3 +512,21 @@ def verify_task():
         return jsonify(verdict)
 
     return jsonify({"error": "unknown stage"}), 400
+
+def groq_ask(prompt, max_tokens=200):
+    if not GROQ_API_KEY:
+        return None
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+            json={"model": GROQ_MODEL, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens},
+            timeout=20
+        )
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"]
+        log(f"Groq judge failed: HTTP {r.status_code} {r.text}")
+        return None
+    except Exception as e:
+        log(f"Groq judge exception: {e}")
+        return None
