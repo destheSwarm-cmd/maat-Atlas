@@ -40,7 +40,7 @@ def groq_ask(prompt, max_tokens=400):
             json={"model": GROQ_MODEL,
                   "messages": [{"role": "user", "content": prompt}],
                   "max_tokens": max_tokens},
-            timeout=20
+            timeout=60
         )
         if r.status_code == 200:
             msg = r.json()["choices"][0]["message"]
