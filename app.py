@@ -194,7 +194,7 @@ def receive_report():
         "verdict_rating": rating,
         "verdict_notes": notes,
         "reported_at": reported_at,
-        "verified_at": datetime.now(timezone.utc).isoformat()
+        "verified_at": datetime.now(timezone.utc).isoformat() + "Z"
     })
 
     # Write verdict to SwarmHive
