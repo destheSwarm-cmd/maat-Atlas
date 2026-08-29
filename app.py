@@ -131,6 +131,26 @@ def receive_goal():
         "verdict": None
     }
 
+        # Persist snapshot to Supabase so it survives Render restarts
+        try:
+            import requests as _req
+            _req.post(
+                f"{SUPABASE_URL}/rest/v1/atlas_goals",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates"
+                },
+                json={
+                    "goal_id": goal_id, "agent": agent,
+                    "instruction": title, "definition_of_done": dod,
+                    "snapshot_at": snap_at
+                },
+                timeout=10
+            )
+        except Exception as _e:
+            log.error(f"Snapshot Supabase write failed: {_e}")
     supabase_log({
         "goal_id": goal_id, "agent": agent,
         "instruction": title, "definition_of_done": dod,
@@ -154,6 +174,25 @@ def receive_report():
         return jsonify({"error": "goal_id required"}), 400
 
     goal = GOALS.get(goal_id, {})
+    # If memory lost (Render restart), fetch snapshot from Supabase
+    if not goal.get("instruction"):
+        try:
+            import requests as _req
+            _r = _req.get(
+                f"{SUPABASE_URL}/rest/v1/atlas_goals?goal_id=eq.{goal_id}&select=instruction,definition_of_done",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}"
+                },
+                timeout=10
+            )
+            if _r.status_code == 200 and _r.json():
+                _row = _r.json()[0]
+                goal["instruction"] = _row.get("instruction", "")
+                goal["definition_of_done"] = _row.get("definition_of_done", "")
+                log.info(f"Snapshot recovered from Supabase for {goal_id}")
+        except Exception as _e:
+            log.error(f"Snapshot Supabase fetch failed: {_e}")
     original_task = goal.get("instruction", "")
     dod           = goal.get("definition_of_done", "")
 
