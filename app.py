@@ -186,16 +186,27 @@ def receive_report():
             "reported_at": reported_at
         })
 
-    # Write to Supabase
-    supabase_log({
-        "goal_id": goal_id,
-        "report": report_text, "report_status": status,
-        "verdict_result": result,
-        "verdict_rating": rating,
-        "verdict_notes": notes,
-        "reported_at": reported_at,
-        "verified_at": datetime.now(timezone.utc).isoformat() + "Z"
-    })
+        # Write to Supabase — PATCH existing row by goal_id
+        try:
+            requests.patch(
+                f"{SUPABASE_URL}/rest/v1/atlas_goals?goal_id=eq.{goal_id}",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "report": report_text, "report_status": status,
+                    "verdict_result": result,
+                    "verdict_rating": rating,
+                    "verdict_notes": notes,
+                    "reported_at": reported_at,
+                    "verified_at": datetime.now(timezone.utc).isoformat()
+                },
+                timeout=10
+            )
+        except Exception as e:
+            log.error(f"Supabase patch failed: {e}")
 
     # Write verdict to SwarmHive
     swarmhive_verdict(goal_id, result, rating, notes)
