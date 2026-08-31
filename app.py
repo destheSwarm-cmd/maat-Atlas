@@ -39,12 +39,18 @@ def groq_ask(prompt, max_tokens=400):
                      "Content-Type": "application/json"},
             json={"model": GROQ_MODEL,
                   "messages": [{"role": "user", "content": prompt}],
-                  "max_tokens": max_tokens},
+                  "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"}},
             timeout=60
         )
         if r.status_code == 200:
             msg = r.json()["choices"][0]["message"]
-            return (msg.get("content") or msg.get("reasoning") or "").strip()
+            raw_out = (msg.get("content") or msg.get("reasoning") or "").strip()
+            if raw_out.startswith("```"):
+                raw_out = raw_out.strip("`")
+                if raw_out.lower().startswith("json"):
+                    raw_out = raw_out[4:].strip()
+            return raw_out
         log.error(f"Groq failed: HTTP {r.status_code} {r.text}")
         return None
     except Exception as e:
@@ -131,26 +137,26 @@ def receive_goal():
         "verdict": None
     }
 
-        # Persist snapshot to Supabase so it survives Render restarts
-        try:
-            import requests as _req
-            _req.post(
-                f"{SUPABASE_URL}/rest/v1/atlas_goals",
-                headers={
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_KEY}",
-                    "Content-Type": "application/json",
-                    "Prefer": "resolution=merge-duplicates"
-                },
-                json={
-                    "goal_id": goal_id, "agent": agent,
-                    "instruction": title, "definition_of_done": dod,
-                    "snapshot_at": snap_at
-                },
-                timeout=10
-            )
-        except Exception as _e:
-            log.error(f"Snapshot Supabase write failed: {_e}")
+    # Persist snapshot to Supabase so it survives Render restarts
+    try:
+        import requests as _req
+        _req.post(
+            f"{SUPABASE_URL}/rest/v1/atlas_goals",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates"
+            },
+            json={
+                "goal_id": goal_id, "agent": agent,
+                "instruction": title, "definition_of_done": dod,
+                "snapshot_at": snap_at
+            },
+            timeout=10
+        )
+    except Exception as _e:
+        log.error(f"Snapshot Supabase write failed: {_e}")
     supabase_log({
         "goal_id": goal_id, "agent": agent,
         "instruction": title, "definition_of_done": dod,
