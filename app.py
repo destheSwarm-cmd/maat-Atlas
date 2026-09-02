@@ -77,7 +77,7 @@ def supabase_log(record: dict):
         log.error(f"Supabase log failed: {e}")
 
 # ── SwarmHive verdict writer ───────────────────────────────────
-def swarmhive_verdict(goal.get("swarmhive_goal_id") or goal_id, result, rating, notes):
+def swarmhive_verdict(sh_goal_id, result, rating, notes):
     if not SWARMHIVE_KEY:
         return
     try:
@@ -85,7 +85,7 @@ def swarmhive_verdict(goal.get("swarmhive_goal_id") or goal_id, result, rating, 
             f"{SWARMHIVE_URL}/verify",
             headers={"Authorization": f"Bearer {SWARMHIVE_KEY}",
                      "Content-Type": "application/json"},
-            json={"actor": "atlas", "goal_id": goal_id,
+            json={"actor": "atlas", "goal_id": sh_goal_id,
                   "result": result, "rating": rating, "notes": notes},
             timeout=15
         )
