@@ -318,3 +318,33 @@ def verify_task_legacy():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
+
+# == Keep-Alive Pinger ================================================
+import threading
+
+COREIQ_URL     = os.getenv("COREIQ_URL", "")
+COREIQ_API_KEY = os.getenv("COREIQ_API_KEY", "")
+ATLAS_URL      = os.getenv("ATLAS_SELF_URL", "https://maat-atlas.onrender.com")
+PING_INTERVAL  = int(os.getenv("PING_INTERVAL", "240"))  # 4 minutes
+
+def keep_alive():
+    while True:
+        try:
+            requests.get(f"{ATLAS_URL}/status", timeout=10)
+            log.info("Keep-alive: Atlas pinged")
+        except Exception as e:
+            log.error(f"Keep-alive Atlas failed: {e}")
+        try:
+            if COREIQ_URL:
+                requests.get(
+                    COREIQ_URL,
+                    headers={"Authorization": f"Bearer {COREIQ_API_KEY}"},
+                    timeout=10
+                )
+                log.info("Keep-alive: CoreIQ pinged")
+        except Exception as e:
+            log.error(f"Keep-alive CoreIQ failed: {e}")
+        import time; time.sleep(PING_INTERVAL)
+
+pinger = threading.Thread(target=keep_alive, daemon=True)
+pinger.start()
